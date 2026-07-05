@@ -17,11 +17,34 @@ export function AuthProvider({ children }) {
   });
 
   useEffect(() => {
+    let active = true;
     if (user?.id) {
-      api.get(`/bookings/user/${user.id}`).then(r => setBookings(r.data || [])).catch(() => setBookings([]));
+      api.get(`/users/${user.id}`)
+        .then(res => {
+          if (!active) return;
+          const u = res.data;
+          if (u) {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+            setUser(u);
+          }
+        })
+        .catch(() => {});
+
+      api.get(`/bookings/user/${user.id}`)
+        .then(r => {
+          if (!active) return;
+          setBookings(r.data || []);
+        })
+        .catch(() => {
+          if (!active) return;
+          setBookings([]);
+        });
     } else {
       setBookings([]);
     }
+    return () => {
+      active = false;
+    };
   }, [user?.id]);
 
   const login = useCallback(async (email, password) => {
@@ -69,6 +92,22 @@ export function AuthProvider({ children }) {
     api.get(`/bookings/user/${user.id}`).then(r => setBookings(r.data || [])).catch(() => {});
   }, [user?.id]);
 
+  const refreshUser = useCallback(async () => {
+    if (!user?.id) return null;
+    try {
+      const res = await api.get(`/users/${user.id}`);
+      const u = res.data;
+      if (u) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+        setUser(u);
+        return u;
+      }
+    } catch (err) {
+      console.error('Failed to refresh user', err);
+    }
+    return null;
+  }, [user?.id]);
+
   return (
     <AuthContext.Provider value={{
       user, bookings, wishlist,
@@ -76,7 +115,7 @@ export function AuthProvider({ children }) {
       isAdmin:    user?.role?.toUpperCase() === 'ADMIN',
       isPackager: user?.role?.toUpperCase() === 'PACKAGER',
       isCustomer: user?.role?.toUpperCase() === 'USER',
-      login, register, logout, toggleWishlist, refreshBookings,
+      login, register, logout, toggleWishlist, refreshBookings, refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

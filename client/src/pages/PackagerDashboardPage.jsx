@@ -8,7 +8,7 @@ import { apiGetPackages, apiDeletePackage } from '../api/api';
 import api from '../lib/axios';
 
 export default function PackagerDashboardPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [packages, setPackages] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,11 +25,14 @@ export default function PackagerDashboardPage() {
     });
 
   useEffect(() => {
+    if (refreshUser) {
+      refreshUser();
+    }
     apiGetPackages()
       .then(setPackages)
       .catch(() => setPackages([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshUser]);
 
   useEffect(() => {
     if (!user?.id) return;

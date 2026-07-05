@@ -505,11 +505,11 @@ function ComplaintDetail({ complaint, onUpdateStatus }) {
         </div>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <button type="button" onClick={() => onUpdateStatus?.(complaint.id, 'REVIEWED')}
-            className="rounded-2xl bg-blue-600 py-3.5 text-sm font-black text-white hover:bg-blue-700">
+            className="rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-black text-white hover:bg-blue-700">
             Mark Reviewed
           </button>
           <button type="button" onClick={() => onUpdateStatus?.(complaint.id, 'RESOLVED')}
-            className="rounded-2xl bg-emerald-600 py-3.5 text-sm font-black text-white hover:bg-emerald-700">
+            className="rounded-2xl bg-emerald-600 px-6 py-3.5 text-sm font-black text-white hover:bg-emerald-700">
             Mark Resolved
           </button>
         </div>
