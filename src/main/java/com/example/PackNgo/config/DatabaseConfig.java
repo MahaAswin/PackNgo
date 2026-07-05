@@ -30,19 +30,24 @@ public class DatabaseConfig {
             String dbName = dbUrl.substring(dbUrl.lastIndexOf("/") + 1);
             String baseUrl = dbUrl.substring(0, dbUrl.lastIndexOf("/"));
 
-            // Connect to the default 'postgres' database to check/create our target database
-            try (Connection connection = DriverManager.getConnection(baseUrl + "/postgres", username, password);
-                 Statement statement = connection.createStatement()) {
-                
-                // Check if the database exists
-                ResultSet resultSet = statement.executeQuery("SELECT count(*) FROM pg_database WHERE datname = '" + dbName + "'");
-                if (resultSet.next() && resultSet.getInt(1) == 0) {
-                    // Create the database if it doesn't exist
-                    statement.executeUpdate("CREATE DATABASE \"" + dbName + "\"");
-                    System.out.println("✅ Automatically created database: " + dbName);
-                } else {
-                    System.out.println("✅ Database " + dbName + " already exists.");
+            // Only run the database creation check for local development
+            if (dbUrl.contains("localhost") || dbUrl.contains("127.0.0.1")) {
+                // Connect to the default 'postgres' database to check/create our target database
+                try (Connection connection = DriverManager.getConnection(baseUrl + "/postgres", username, password);
+                     Statement statement = connection.createStatement()) {
+                    
+                    // Check if the database exists
+                    ResultSet resultSet = statement.executeQuery("SELECT count(*) FROM pg_database WHERE datname = '" + dbName + "'");
+                    if (resultSet.next() && resultSet.getInt(1) == 0) {
+                        // Create the database if it doesn't exist
+                        statement.executeUpdate("CREATE DATABASE \"" + dbName + "\"");
+                        System.out.println("✅ Automatically created database: " + dbName);
+                    } else {
+                        System.out.println("✅ Database " + dbName + " already exists.");
+                    }
                 }
+            } else {
+                System.out.println("ℹ️ Remote database URL detected. Skipping local database creation check.");
             }
         } catch (Exception e) {
             System.err.println("⚠️ Database auto-creation check failed: " + e.getMessage());
