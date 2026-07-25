@@ -3,12 +3,14 @@ import { useLocation, Link, useNavigate, useSearchParams } from 'react-router-do
 import { motion } from 'framer-motion';
 import { CheckCircle2, Download, Home, Calendar, ArrowRight, ShieldCheck, User, CreditCard } from 'lucide-react';
 import TopNavigation from '../components/TopNavigation';
+import { useLocale } from '../context/LocaleContext';
 import api from '../lib/axios';
 
 export default function BookingSuccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { formatPrice } = useLocale();
   const [booking, setBooking] = useState(location.state?.booking || null);
   const [paymentId, setPaymentId] = useState(location.state?.paymentId || '');
   const [loading, setLoading] = useState(!booking);
@@ -56,7 +58,7 @@ Hotel Type:      ${booking?.hotelType || 'N/A'}
 Transport:       ${booking?.transportType || 'N/A'}
 ---------------------------------------------
 Payment ID:      ${paymentId || 'N/A'}
-Total Paid:      INR ${booking?.totalAmount?.toLocaleString() || '0'}
+Total Paid:      ${formatPrice(booking?.totalAmount || 0)}
 Payment Status:  SUCCESS
 =============================================
        Thank you for traveling with us!
@@ -201,7 +203,7 @@ Payment Status:  SUCCESS
               <div className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
                 <div className="flex justify-between">
                   <span>Base Booking Package Charge</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{booking.totalAmount?.toLocaleString()}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{formatPrice(booking.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Upgrade & Customizations</span>
@@ -209,7 +211,7 @@ Payment Status:  SUCCESS
                 </div>
                 <div className="flex justify-between border-t border-dashed border-slate-200 pt-3 text-base dark:border-slate-700">
                   <span className="font-bold text-slate-900 dark:text-white">Amount Paid</span>
-                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">₹{booking.totalAmount?.toLocaleString()}</span>
+                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatPrice(booking.totalAmount)}</span>
                 </div>
               </div>
             </div>

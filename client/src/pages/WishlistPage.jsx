@@ -4,10 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MapPin, Star, Compass, ArrowRight } from 'lucide-react';
 import TopNavigation from '../components/TopNavigation';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
 import api from '../lib/axios';
 
 export default function WishlistPage() {
   const { wishlist, toggleWishlist } = useAuth();
+  const { formatPrice } = useLocale();
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +77,7 @@ export default function WishlistPage() {
                   <div className="p-5">
                     <div className="mb-1 flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-blue-500">{pkg.status || 'ACTIVE'}</span>
-                      <span className="text-lg font-black text-slate-900 dark:text-white">₹{pkg.price?.toLocaleString()}</span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">{formatPrice(pkg.price)}</span>
                     </div>
                     <h3 className="font-bold text-slate-900 transition-colors group-hover:text-blue-600 dark:text-white">{pkg.title}</h3>
                     <p className="mt-1 flex items-center gap-1 text-sm text-slate-500"><MapPin size={13} />{pkg.location}</p>

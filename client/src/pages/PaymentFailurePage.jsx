@@ -3,12 +3,14 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { XCircle, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
 import TopNavigation from '../components/TopNavigation';
+import { useLocale } from '../context/LocaleContext';
 import { loadRazorpay } from '../lib/razorpay';
 import api from '../lib/axios';
 
 export default function PaymentFailurePage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { formatPrice } = useLocale();
   const [booking] = useState(location.state?.booking || null);
   const [errorMessage] = useState(location.state?.error || 'Your transaction could not be processed.');
   const [retrying, setRetrying] = useState(false);
@@ -131,7 +133,7 @@ export default function PaymentFailurePage() {
               </h4>
               <div className="mt-2 flex justify-between text-xs text-slate-500">
                 <span>Guests: {booking.guests}</span>
-                <span className="font-bold text-slate-900 dark:text-white">₹{booking.totalAmount?.toLocaleString()}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{formatPrice(booking.totalAmount)}</span>
               </div>
             </div>
           )}

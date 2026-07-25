@@ -52,6 +52,22 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        return userService.findById(id).map(existing -> {
+            if (updates.containsKey("companyName") && updates.get("companyName") != null) existing.setCompanyName(updates.get("companyName").toString());
+            if (updates.containsKey("ownerName") && updates.get("ownerName") != null) existing.setOwnerName(updates.get("ownerName").toString());
+            if (updates.containsKey("phone") && updates.get("phone") != null) existing.setPhone(updates.get("phone").toString());
+            if (updates.containsKey("website") && updates.get("website") != null) existing.setWebsite(updates.get("website").toString());
+            if (updates.containsKey("companyAddress") && updates.get("companyAddress") != null) existing.setCompanyAddress(updates.get("companyAddress").toString());
+            if (updates.containsKey("gstNumber") && updates.get("gstNumber") != null) existing.setGstNumber(updates.get("gstNumber").toString());
+            if (updates.containsKey("licenseNumber") && updates.get("licenseNumber") != null) existing.setLicenseNumber(updates.get("licenseNumber").toString());
+            if (updates.containsKey("panNumber") && updates.get("panNumber") != null) existing.setPanNumber(updates.get("panNumber").toString());
+            if (updates.containsKey("packagerStatus") && updates.get("packagerStatus") != null) existing.setPackagerStatus(updates.get("packagerStatus").toString());
+            return ResponseEntity.ok(userService.saveUser(existing));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<User> updatePackagerStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         return userService.findById(id).map(u -> {
