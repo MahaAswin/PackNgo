@@ -34,9 +34,18 @@ public class Booking {
     private Boolean customPackage;
     
     @Enumerated(EnumType.STRING)
-    private BookingStatus status;
+    @Column(name = "booking_status")
+    private BookingStatus bookingStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status")
+    private PaymentStatus paymentStatus;
     
     public enum BookingStatus {
-        PENDING, CONFIRMED, CANCELLED
+        PENDING_PAYMENT, CONFIRMED, CANCELLED
+    }
+
+    public enum PaymentStatus {
+        PENDING, SUCCESS, FAILED
     }
 }

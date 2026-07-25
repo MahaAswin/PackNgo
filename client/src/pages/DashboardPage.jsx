@@ -1,19 +1,107 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Users, Compass, Star, TrendingUp, Gift, Clock, ShieldCheck } from 'lucide-react';
+import { MapPin, Calendar, Users, Compass, Star, TrendingUp, Gift, Clock, ShieldCheck, CreditCard } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import ThemeToggle from '../components/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
+import apiClient from '../lib/axios';
+import { loadRazorpay } from '../lib/razorpay';
 
 export default function DashboardPage() {
-  const { user, bookings } = useAuth();
+  const { user, bookings, refreshBookings } = useAuth();
+  const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
 
-  const upcomingBookings = bookings.filter(b => b.status !== 'CANCELLED');
+  const upcomingBookings = bookings.filter(b => b.bookingStatus !== 'CANCELLED');
   const totalSpent = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
   const recommendedPackages = packages.filter(p => p.isTrending || p.verified).slice(0, 3);
+
+  const [payingId, setPayingId] = useState(null);
+
+  const handlePayNow = async (b) => {
+    setPayingId(b.id);
+    try {
+      const orderRes = await apiClient.post('/payment/create-order', {
+        bookingId: b.id,
+      });
+      const orderData = orderRes.data;
+
+      const scriptLoaded = await loadRazorpay();
+      if (!scriptLoaded) {
+        alert('Failed to load Razorpay SDK. Please check your internet connection.');
+        setPayingId(null);
+        return;
+      }
+
+      const options = {
+        key: (import.meta.env.VITE_RAZORPAY_KEY && import.meta.env.VITE_RAZORPAY_KEY !== 'rzp_test_xxxxxxxxx') ? import.meta.env.VITE_RAZORPAY_KEY : orderData.key,
+        amount: orderData.amount * 100, // paise
+        currency: orderData.currency,
+        name: 'PackNgo',
+        description: `Booking for ${b.travelPackage?.title || 'Travel Package'}`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          try {
+            setPayingId(b.id);
+            const verifyRes = await apiClient.post('/payment/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            if (verifyRes.data.success) {
+              await refreshBookings();
+              navigate('/booking-success', {
+                state: {
+                  booking: b,
+                  paymentId: response.razorpay_payment_id,
+                },
+                replace: true,
+              });
+            } else {
+              navigate('/payment-failure', {
+                state: {
+                  booking: b,
+                  error: 'Signature verification failed.',
+                },
+                replace: true,
+              });
+            }
+          } catch (err) {
+            navigate('/payment-failure', {
+              state: {
+                booking: b,
+                error: err.response?.data?.message || 'Verification failed.',
+              },
+              replace: true,
+            });
+          } finally {
+            setPayingId(null);
+          }
+        },
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+        },
+        theme: {
+          color: '#2563EB',
+        },
+        modal: {
+          ondismiss: function () {
+            setPayingId(null);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err.response?.data || 'Failed to initialize payment. Please try again.');
+      setPayingId(null);
+    }
+  };
 
   useEffect(() => {
     api.get('/packages').then(r => setPackages(r.data || [])).catch(() => setPackages([]));
@@ -160,11 +248,26 @@ export default function DashboardPage() {
                                 <p className="text-sm text-slate-500">{b.user?.email || 'No email available'}</p>
                               </div>
                               <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                                b.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : b.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                b.bookingStatus === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                : b.bookingStatus === 'CANCELLED' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
                                 : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                              }`}>{b.status}</span>
+                              }`}>{b.bookingStatus?.replace('_', ' ') || b.status}</span>
                             </div>
+
+                            {b.bookingStatus === 'PENDING_PAYMENT' && (
+                              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+                                <span className="text-xs text-amber-600 font-semibold dark:text-amber-400 flex items-center gap-1">
+                                  <CreditCard size={12} /> Payment required to confirm
+                                </span>
+                                <button
+                                  onClick={() => handlePayNow(b)}
+                                  disabled={payingId === b.id}
+                                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  {payingId === b.id ? 'Loading...' : 'Pay Now'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

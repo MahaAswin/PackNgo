@@ -22,7 +22,8 @@ public class BookingController {
 
     @PostMapping
     public ResponseEntity<Booking> createBooking(@RequestBody Booking booking) {
-        booking.setStatus(Booking.BookingStatus.PENDING);
+        booking.setBookingStatus(Booking.BookingStatus.PENDING_PAYMENT);
+        booking.setPaymentStatus(Booking.PaymentStatus.PENDING);
         return ResponseEntity.ok(bookingService.saveBooking(booking));
     }
 

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import TopNavigation from '../components/TopNavigation';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/axios';
+import { loadRazorpay } from '../lib/razorpay';
 
 export default function PackageDetailsPage() {
   const { id } = useParams();
@@ -82,8 +83,11 @@ export default function PackageDetailsPage() {
     if (!user) { navigate('/auth'); return; }
     if (!travelDate) { setError('Please select a travel date.'); return; }
     setBooking(true); setError('');
+    
+    let createdBooking = null;
     try {
-      await api.post('/bookings', {
+      // 1. Create a booking in PENDING_PAYMENT status
+      const bookingRes = await api.post('/bookings', {
         user: { id: user.id },
         travelPackage: { id: pkg.id },
         travelDate,
@@ -94,13 +98,98 @@ export default function PackageDetailsPage() {
         hotelType: selectedHotelType,
         transportType: selectedTransportType,
         customPackage: !!pkg.customizablePackage,
-        status: 'PENDING',
+        bookingStatus: 'PENDING_PAYMENT',
+        paymentStatus: 'PENDING',
       });
-      await refreshBookings();
-      setBooked(true);
-      setTimeout(() => navigate('/dashboard'), 1500);
-    } catch {
-      setError('Booking failed. Please try again.');
+      createdBooking = bookingRes.data;
+
+      // 2. Create the Razorpay Order
+      const orderRes = await api.post('/payment/create-order', {
+        bookingId: createdBooking.id,
+      });
+      const orderData = orderRes.data;
+
+      // 3. Load Razorpay script dynamically
+      const scriptLoaded = await loadRazorpay();
+      if (!scriptLoaded) {
+        setError('Failed to load Razorpay SDK. Please check your internet connection.');
+        setBooking(false);
+        return;
+      }
+
+      // 4. Configure Razorpay Checkout Options
+      const options = {
+        key: (import.meta.env.VITE_RAZORPAY_KEY && import.meta.env.VITE_RAZORPAY_KEY !== 'rzp_test_xxxxxxxxx') ? import.meta.env.VITE_RAZORPAY_KEY : orderData.key,
+        amount: orderData.amount * 100, // paise
+        currency: orderData.currency,
+        name: 'PackNgo',
+        description: `Booking for ${pkg.title}`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          try {
+            setBooking(true);
+            // 5. Send transaction details for signature verification
+            const verifyRes = await api.post('/payment/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            if (verifyRes.data.success) {
+              await refreshBookings();
+              setBooked(true);
+              navigate('/booking-success', {
+                state: {
+                  booking: { ...createdBooking, user, travelPackage: pkg },
+                  paymentId: response.razorpay_payment_id,
+                },
+                replace: true,
+              });
+            } else {
+              navigate('/payment-failure', {
+                state: {
+                  booking: { ...createdBooking, user, travelPackage: pkg },
+                  error: 'Signature verification failed.',
+                },
+                replace: true,
+              });
+            }
+          } catch (err) {
+            navigate('/payment-failure', {
+              state: {
+                booking: { ...createdBooking, user, travelPackage: pkg },
+                error: err.response?.data?.message || 'Verification failed.',
+              },
+              replace: true,
+            });
+          } finally {
+            setBooking(false);
+          }
+        },
+        prefill: {
+          name: user.name || '',
+          email: user.email || '',
+        },
+        theme: {
+          color: '#2563EB',
+        },
+        modal: {
+          ondismiss: function () {
+            navigate('/payment-failure', {
+              state: {
+                booking: { ...createdBooking, user, travelPackage: pkg },
+                error: 'Payment flow was cancelled by the traveler.',
+              },
+              replace: true,
+            });
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      setError(err.response?.data || 'Booking initialization failed. Please try again.');
     } finally {
       setBooking(false);
     }

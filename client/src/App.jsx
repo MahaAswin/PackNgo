@@ -11,6 +11,8 @@ import PackageDetailsPage from './pages/PackageDetailsPage';
 import PackagerDashboardPage from './pages/PackagerDashboardPage';
 import AddPackagePage from './pages/AddPackagePage';
 import AdminDashboard from './pages/AdminDashboard';
+import BookingSuccessPage from './pages/BookingSuccessPage';
+import PaymentFailurePage from './pages/PaymentFailurePage';
 import { RequireAuth, CustomerOnly, AdminOnly, PackagerOnly } from './components/RouteGuards';
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/package/:id" element={<PackageDetailsPage />} />
             <Route path="/dashboard" element={<CustomerOnly><DashboardPage /></CustomerOnly>} />
+            <Route path="/booking-success" element={<CustomerOnly><BookingSuccessPage /></CustomerOnly>} />
+            <Route path="/payment-failure" element={<CustomerOnly><PaymentFailurePage /></CustomerOnly>} />
             <Route path="/wishlist" element={<RequireAuth><WishlistPage /></RequireAuth>} />
             <Route path="/profile" element={<CustomerOnly><ProfilePage /></CustomerOnly>} />
             <Route path="/packager" element={<PackagerOnly><PackagerDashboardPage /></PackagerOnly>} />
